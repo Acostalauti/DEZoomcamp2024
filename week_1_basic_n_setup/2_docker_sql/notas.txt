@@ -1,0 +1,257 @@
+# Para levantar postgres en el terminal use este codigo
+
+
+docker run -it \
+ -e POSTGRES_USER="root" \
+ -e POSTGRES_PASSWORD="root" \
+ -e POSTGRES_DB="ny_taxi" \
+ -v $(pwd)/ny_taxi_postgres_data:/var/lib/postgresql/data \
+ -p 5432:5432 \
+postgres:13
+
+ 
+ # la pagina donde esta la data de taxis es esta
+ 
+ https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page
+
+# Diccionario de datos del dataset yellow 
+ https://www.nyc.gov/assets/tlc/downloads/pdf/data_dictionary_trip_records_yellow.pdf
+
+
+# Comprobar que puertos estan abiertos y que estan corriendo.
+ lsof -i -P | grep -i "listen"
+
+ #Desde la consola para ver como esta compuesta la tabla de postgree se usa el comando
+ \d yellow_taxi_data;
+
+
+
+SELECT *
+FROM pg_catalog.pg_tables
+WHERE schemaname != 'pg_catalog' AND 
+    schemaname != 'information_schema';
+
+## Para usar el pgadmin desde el cliente
+pgcli -h localhost -p5432 -u root -d ny_taxi
+
+## Cogido para levantar el pgadmin
+
+docker run -it \
+-e PGADMIN_DEFAULT_EMAIL="admin@admin.com" \
+-e PGADMIN_DEFAULT_PASSWORD="root" \
+-p 8080:80 \
+dpage/pgadmin4
+  
+
+# Codigo para levantar una network
+docker network create pg-network
+
+# Codigo para levantar el docker de postgres en la network que creamos
+
+docker run -it \
+ -e POSTGRES_USER="root" \
+ -e POSTGRES_PASSWORD="root" \
+ -e POSTGRES_DB="ny_taxi" \
+ -v $(pwd)/ny_taxi_postgres_data:/var/lib/postgresql/data \
+ -p 5432:5432 \
+ --network=pg-network \
+ --name pg-database \
+postgres:13
+
+# Codigo para levantar el pgadmin en la network creada
+
+docker run -it \
+-e PGADMIN_DEFAULT_EMAIL="admin@admin.com" \
+-e PGADMIN_DEFAULT_PASSWORD="root" \
+-p 8080:80 \
+ --network=pg-network \
+ --name pgadmin \
+dpage/pgadmin4
+
+# codigo para ejecutar el codigo python para ingestar la data 
+
+El URL lo tuve que poner dentro del codigo python porque no me reconocia el parametro desde la terminal
+##URL = "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2022-01.parquet"
+
+
+python3 ingest_data.py \
+    --user=root \
+    --password=root \
+    --host=localhost \
+    --port=5432 \
+    --db=ny_taxi \
+    --table_name=yellow_taxi_data \
+
+# Codigo para crear el docker 
+  
+docker build -t taxi_ingest:v001 .
+
+# codigo para correr el python pero desde docker 
+
+docker run -it \
+    --network=pg-network \
+    taxi_ingest:v001 \
+        --user=root \
+        --password=root \
+        --host=pg-database \
+        --port=5432 \
+        --db=ny_taxi \
+        --table_name=yellow_taxi_data \
+
+
+## Para levantar el docker compose en el terminal
+docker-compose up -d
+
+
+## QUERYS
+
+SELECT 
+	CAST(lpep_dropoff_datetime AS DATE) 	AS "day",
+	total_amount,
+	CONCAT(zpu."Borough", '/' , zpu."Zone") AS "pickup_up_loc",
+	CONCAT(zdo."Borough", '/' , zdo."Zone") AS "dropoff_loc"
+FROM green_taxi_data t,
+	 zones zpu,
+	 zones zdo
+WHERE 
+	t."PULocationID"= zpu."LocationID" AND
+	t."DOLocationID"= zdo."LocationID" 
+LIMIT 100
+
+### 
+
+SELECT 
+	CAST(lpep_pickup_datetime AS DATE) 	AS "day",
+	"PULocationID",
+	sum(total_amount)
+FROM green_taxi_data t
+WHERE CAST(lpep_pickup_datetime AS DATE) = '2019-09-18'
+GROUP BY 1,2
+ORDER BY sum(total_amount) DESC
+
+________________________________________________________________________________________________________
+
+## QUERY QUESTION 5
+SELECT 
+	CAST(lpep_pickup_datetime AS DATE) 	AS "day",
+	CONCAT(zpu."Borough") AS "pickup_up_loc",
+	sum(total_amount)
+FROM green_taxi_data t,
+zones zpu
+WHERE CAST(lpep_pickup_datetime AS DATE) = '2019-09-18' AND t."PULocationID"= zpu."LocationID"
+GROUP BY 1,2
+ORDER BY sum(total_amount) DESC
+
+________________________________________________________________________________________________________
+
+## QUERY QUESTION 6
+
+SELECT 
+	CAST(lpep_dropoff_datetime AS DATE) 	AS "day",
+	tip_amount,
+	CONCAT(zpu."Borough", '/' , zpu."Zone") AS "pickup_up_loc",
+	CONCAT(zdo."Borough", '/' , zdo."Zone") AS "dropoff_loc"
+FROM green_taxi_data t,
+	 zones zpu,
+	 zones zdo
+WHERE 
+	t."PULocationID" = 7 AND 
+	t."PULocationID"= zpu."LocationID" AND
+	t."DOLocationID"= zdo."LocationID" 
+ORDER BY tip_amount DESC
+
+
+
+## HOMEWORK ___________________________________________________________________________________________
+
+Question 1. Knowing docker tags
+
+--rm
+
+Question 2. Understanding docker first run
+
+wheel 0.42.0
+
+Question 3. Count records
+15612
+
+Question 4. Largest trip for each day
+2019-09-26
+
+Question 5. Three biggest pick up Boroughs
+"Brooklyn" "Manhattan" "Queens"
+
+Question 6. Largest tip
+JFK Airport
+
+Question 7. Creating Resources
+
+terrademo terraform apply  
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the
+following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # google_bigquery_dataset.demo_dataset will be created
+  + resource "google_bigquery_dataset" "demo_dataset" {
+      + creation_time              = (known after apply)
+      + dataset_id                 = "demo_dataset"
+      + default_collation          = (known after apply)
+      + delete_contents_on_destroy = false
+      + effective_labels           = (known after apply)
+      + etag                       = (known after apply)
+      + id                         = (known after apply)
+      + is_case_insensitive        = (known after apply)
+      + last_modified_time         = (known after apply)
+      + location                   = "US"
+      + max_time_travel_hours      = (known after apply)
+      + project                    = "terraform-demo-412302"
+      + self_link                  = (known after apply)
+      + storage_billing_model      = (known after apply)
+      + terraform_labels           = (known after apply)
+    }
+
+  # google_storage_bucket.demo-bucket will be created
+  + resource "google_storage_bucket" "demo-bucket" {
+      + effective_labels            = (known after apply)
+      + force_destroy               = true
+      + id                          = (known after apply)
+      + location                    = "US"
+      + name                        = "terraform-demo-412302-terra-bucket"
+      + project                     = (known after apply)
+      + public_access_prevention    = (known after apply)
+      + rpo                         = (known after apply)
+      + self_link                   = (known after apply)
+      + storage_class               = "STANDARD"
+      + terraform_labels            = (known after apply)
+      + uniform_bucket_level_access = (known after apply)
+      + url                         = (known after apply)
+
+      + lifecycle_rule {
+          + action {
+              + type = "AbortIncompleteMultipartUpload"
+            }
+          + condition {
+              + age                   = 1
+              + matches_prefix        = []
+              + matches_storage_class = []
+              + matches_suffix        = []
+              + with_state            = (known after apply)
+            }
+        }
+    }
+
+Plan: 2 to add, 0 to change, 0 to destroy.
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+google_bigquery_dataset.demo_dataset: Creating...
+google_storage_bucket.demo-bucket: Creating...
+google_bigquery_dataset.demo_dataset: Creation complete after 1s [id=projects/terraform-demo-412302/datasets/demo_dataset]
+google_storage_bucket.demo-bucket: Creation complete after 1s [id=terraform-demo-412302-terra-bucket]
