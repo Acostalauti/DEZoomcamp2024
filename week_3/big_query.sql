@@ -81,3 +81,16 @@ WHERE DATE(lpep_pickup_datetime) >= '2022-06-01' AND DATE(lpep_pickup_datetime) 
 -- RESULTADO Choose the answer which most closely matches.
 -- 12.82 MB for non-partitioned table and 1.12 MB for the partitioned table 
 
+-- Question 6:
+-- Where is the data stored in the External Table you created?
+
+-- RESULTADO GCP Bucket
+
+-- Question 7:
+-- It is best practice in Big Query to always cluster your data:
+
+--RESULTADO False
+
+
+
+
